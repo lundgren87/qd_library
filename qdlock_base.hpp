@@ -45,7 +45,7 @@ auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 {
 	typedef decltype(f(ps...)) R;
 	unpack_promise<R> p(pptr);
-	p.set_value((o.*f)(std::forward<Ps>(ps)...));
+	p.set_value((o->*f)(std::forward<Ps>(ps)...));
 }
 
 /* case 2Ba */
@@ -60,7 +60,7 @@ auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 {
 	typedef decltype(f(ps...)) R;
 	unpack_promise<R> p(pptr);
-	p.set_value((o.*f)(std::forward<Ps>(ps)...));
+	p.set_value((o->*f)(std::forward<Ps>(ps)...));
 }
 
 /* case 1Aa */
@@ -126,7 +126,7 @@ auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 	typedef decltype(f(ps...)) R;
 	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
 	unpack_promise<R> p(pptr);
-	(o.*f)(std::forward<Ps>(ps)...);
+	(o->*f)(std::forward<Ps>(ps)...);
 	p.set_value();
 }
 
@@ -143,7 +143,7 @@ auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 	typedef decltype(f(ps...)) R;
 	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
 	unpack_promise<R> p(pptr);
-	(o.*f)(std::forward<Ps>(ps)...);
+	(o->*f)(std::forward<Ps>(ps)...);
 	p.set_value();
 }
 /** wrapper function for void operations */
@@ -216,7 +216,7 @@ auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 		&& std::is_member_function_pointer<Function>::value
 	, void>::type
 {
-	(o.*f)(std::forward<Ps>(ps)...);
+	(o->*f)(std::forward<Ps>(ps)...);
 }
 
 /* case 2Bc */
@@ -229,7 +229,7 @@ auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
 		&& std::is_member_function_pointer<Function>::value
 	, void>::type
 {
-	(o.*f)(std::forward<Ps>(ps)...);
+	(o->*f)(std::forward<Ps>(ps)...);
 }
 
 /* case 1Ac */
@@ -322,11 +322,11 @@ class qdlock_base {
 			std::enable_if<
 				!std::is_same<Function, std::nullptr_t>::value
 				&& std::is_member_function_pointer<Function>::value
-//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o->*f(ps...))>::value
 			, void>::type
 		{
 		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
-			r.set_value((o.*f)(std::move(ps)...));
+			r.set_value((o->*f)(std::move(ps)...));
 		}
 
 		/** alternative for operations with a promise, case function pointer specified */
@@ -356,7 +356,7 @@ class qdlock_base {
 		{
 		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
-			r.set_value((o.*f)(std::move(ps)...));
+			r.set_value((o->*f)(std::move(ps)...));
 		}
 
 		/** alternative for operations which return void */
@@ -382,11 +382,11 @@ class qdlock_base {
 			std::enable_if<
 				!std::is_same<Function, std::nullptr_t>::value
 				&& std::is_member_function_pointer<Function>::value
-//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o->*f(ps...))>::value
 			, void>::type
 		{
 		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
-			(o.*f)(std::move(ps)...);
+			(o->*f)(std::move(ps)...);
 			r.set_value();
 		}
 
@@ -414,7 +414,7 @@ class qdlock_base {
 		{
 		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
-			(o.*f)(std::move(ps)...);
+			(o->*f)(std::move(ps)...);
 			r.set_value();
 		}
 
@@ -439,10 +439,10 @@ class qdlock_base {
 			std::enable_if<
 				!std::is_same<Function, std::nullptr_t>::value
 				&& std::is_member_function_pointer<Function>::value
-//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o->*f(ps...))>::value
 			, void>::type
 		{
-			(o.*f)(std::move(ps)...);
+			(o->*f)(std::move(ps)...);
 		}
 
 		/** alternative for operations without a promise, case function pointer specified */
@@ -466,7 +466,7 @@ class qdlock_base {
 			, void>::type
 		{
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
-			(o.*f)(std::move(ps)...);
+			(o->*f)(std::move(ps)...);
 		}
 
 
