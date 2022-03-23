@@ -31,9 +31,26 @@ class unpack_promise : public Promise<R> {
  * a) returning a future of some type
  * b) returning a future of void
  * c) returning void (fire and forget delegation)
+ * x) ??
+ * y) ??
  */
 
-/* case 2Aa */
+/* case 2Aax */
+template<typename Types, typename Function, Function f, typename O, typename... Ps>
+auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& !std::is_same<Function, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	typedef decltype(f(ps...)) R;
+	unpack_promise<R> p(pptr);
+	p.set_value((o.*f)(std::forward<Ps>(ps)...));
+}
+
+/* case 2Aay */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
 auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
@@ -48,7 +65,22 @@ auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 	p.set_value((o->*f)(std::forward<Ps>(ps)...));
 }
 
-/* case 2Ba */
+/* case 2Bax */
+template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
+auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& std::is_same<Ignored, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	typedef decltype(f(ps...)) R;
+	unpack_promise<R> p(pptr);
+	p.set_value((o.*f)(std::forward<Ps>(ps)...));
+}
+
+/* case 2Bay */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
 auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
@@ -113,7 +145,24 @@ auto delegated_function_future(char* buf, Ps&&... ps)
 	delegated_function_future<typename Types::tail, Ignored, i>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
 }
 
-/* case 2Ab */
+/* case 2Abx */
+template<typename Types, typename Function, Function f, typename O, typename... Ps>
+auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& !std::is_same<Function, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	typedef decltype(f(ps...)) R;
+	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
+	unpack_promise<R> p(pptr);
+	(o.*f)(std::forward<Ps>(ps)...);
+	p.set_value();
+}
+
+/* case 2Aby */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
 auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
@@ -130,7 +179,7 @@ auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 	p.set_value();
 }
 
-/* case 2Bb */
+/* case 2Bbx */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
 auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
@@ -143,9 +192,27 @@ auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 	typedef decltype(f(ps...)) R;
 	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
 	unpack_promise<R> p(pptr);
-	(o->*f)(std::forward<Ps>(ps)...);
+	(o.*f)(std::forward<Ps>(ps)...);
 	p.set_value();
 }
+
+/* case 2Bby */
+template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
+auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& std::is_same<Ignored, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	typedef decltype(f(ps...)) R;
+	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
+	unpack_promise<R> p(pptr);
+	(o.->*f)(std::forward<Ps>(ps)...);
+	p.set_value();
+}
+
 /** wrapper function for void operations */
 /* 1Ab */
 template<typename Types, typename Function, Function f, typename... Ps>
@@ -206,7 +273,20 @@ auto delegated_void_function_future(char* buf, Ps&&... ps)
 }
 
 /** wrapper function for operations without associated future */
-/* case 2Ac */
+/* case 2Acx */
+template<typename Types, typename Function, Function f, typename O, typename... Ps>
+auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& !std::is_same<Function, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	(o.*f)(std::forward<Ps>(ps)...);
+}
+
+/* case 2Acy */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
 auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 -> typename
@@ -219,7 +299,20 @@ auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 	(o->*f)(std::forward<Ps>(ps)...);
 }
 
-/* case 2Bc */
+/* case 2Bcx */
+template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
+auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& std::is_same<Ignored, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	(o.*f)(std::forward<Ps>(ps)...);
+}
+
+/* case 2Bcy */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
 auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
 -> typename
@@ -315,7 +408,21 @@ class qdlock_base {
 		}
 
 		/** alternative for operations with a promise, case member function pointer in template, object specified */
-		/* case 2Aa */
+		/* case 2Aax */
+		template<typename Function, Function f, typename R, typename O, typename... Ps>
+		auto execute(std::promise<typename std::result_of<decltype(&O::Function)(O, Ps...)>::type> r, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				!std::is_same<Function, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+			, void>::type
+		{
+		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			r.set_value((o.*f)(std::move(ps)...));
+		}
+
+		/* case 2Aay */
 		template<typename Function, Function f, typename R, typename O, typename... Ps>
 		auto execute(std::promise<typename std::result_of<decltype(&O::Function)(O, Ps...)>::type> r, O&& o, Ps&&... ps)
 		-> typename
@@ -345,7 +452,21 @@ class qdlock_base {
 		}
 
 		/** alternative for operations witht a promise, case member function pointer and object specified */
-		/* case 2Ba */
+		/* case 2Bax */
+		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
+		auto execute(std::promise<typename std::result_of<Function(Ps...)>::type> r, Function&& f, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				std::is_same<Ignored, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+			, void>::type
+		{
+		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
+			r.set_value((o.*f)(std::move(ps)...));
+		}
+
+		/* case 2Bay */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
 		auto execute(std::promise<typename std::result_of<Function(Ps...)>::type> r, Function&& f, O&& o, Ps&&... ps)
 		-> typename
@@ -375,7 +496,22 @@ class qdlock_base {
 		}
 
 		/** alternative for operations with a promise, case member function pointer in template, object specified */
-		/* case 2Ab */
+		/* case 2Abx */
+		template<typename Function, Function f, typename R, typename O, typename... Ps>
+		auto execute(std::promise<void> r, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				!std::is_same<Function, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+			, void>::type
+		{
+		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			(o.*f)(std::move(ps)...);
+			r.set_value();
+		}
+
+		/* case 2Aby */
 		template<typename Function, Function f, typename R, typename O, typename... Ps>
 		auto execute(std::promise<void> r, O&& o, Ps&&... ps)
 		-> typename
@@ -403,7 +539,22 @@ class qdlock_base {
 		}
 
 		/** alternative for operations witht a promise, case member function pointer and object specified */
-		/* case 2Bb */
+		/* case 2Bx */
+		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
+		auto execute(std::promise<void> r, Function&& f, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				std::is_same<Ignored, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+			, void>::type
+		{
+		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
+			(o.*f)(std::move(ps)...);
+			r.set_value();
+		}
+
+		/* case 2Bby */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
 		auto execute(std::promise<void> r, Function&& f, O&& o, Ps&&... ps)
 		-> typename
@@ -432,7 +583,20 @@ class qdlock_base {
 		}
 
 		/** alternative for operations without a promise, case member function pointer in template, object specified */
-		/* case 2Ac */
+		/* case 2Acx */
+		template<typename Function, Function f, typename Promise, typename O, typename... Ps>
+		auto execute(std::nullptr_t, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				!std::is_same<Function, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+			, void>::type
+		{
+			(o.*f)(std::move(ps)...);
+		}
+
+		/* case 2Acy */
 		template<typename Function, Function f, typename Promise, typename O, typename... Ps>
 		auto execute(std::nullptr_t, O&& o, Ps&&... ps)
 		-> typename
@@ -456,7 +620,20 @@ class qdlock_base {
 		}
 
 		/** alternative for operations without a promise, case member function pointer and object specified */
-		/* case 2Bc */
+		/* case 2Bcx */
+		template<typename Ignored, Ignored i, typename Promise, typename Function, typename O, typename... Ps>
+		auto execute(std::nullptr_t, Function&& f, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				std::is_same<Ignored, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+			, void>::type
+		{
+			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
+			(o.*f)(std::move(ps)...);
+		}
+
+		/* case 2Bcy */
 		template<typename Ignored, Ignored i, typename Promise, typename Function, typename O, typename... Ps>
 		auto execute(std::nullptr_t, Function&& f, O&& o, Ps&&... ps)
 		-> typename
