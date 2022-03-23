@@ -21,6 +21,9 @@ else(QD_DEBUG)
 	set(DEFAULT_LINK_FLAGS "${DEFAULT_LINK_FLAGS} -O3")
 endif(QD_DEBUG)
 
+option(QD_BUILD_SHARED
+	"Build the QD library as a shared library" OFF)
+
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${DEFAULT_C_FLAGS}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${DEFAULT_CXX_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${DEFAULT_LINK_FLAGS}")
@@ -35,7 +38,11 @@ include_directories("${PROJECT_SOURCE_DIR}")
 set(qd_sources "threadid.cpp")
 set(lock_sources locks/mcs_lock.cpp locks/mcs_futex_lock.cpp)
 
-add_library(qd ${qd_sources} ${lock_sources})
+if(QD_BUILD_SHARED)
+	add_library(qd SHARED ${qd_sources} ${lock_sources})
+else()
+	add_library(qd ${qd_sources} ${lock_sources})
+endif()
 
 option(QD_USE_LIBNUMA
 	"Use libnuma to determine NUMA structure" ON)
